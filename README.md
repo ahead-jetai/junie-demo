@@ -24,7 +24,7 @@ ChefAI is a smart cooking assistant powered by OpenAI and built using [JetBrains
    - Android/iOS Simulators
    - Physical devices via QR code
 
-🧪 This project uses [file-based routing](https://docs.expo.dev/router/introduction/) in the app/ directory.
+> 🧪 This project uses [file-based routing](https://docs.expo.dev/router/introduction/) in the app/ directory.
 
 ## 🧠 Powered by JetBrains Junie
 
@@ -73,7 +73,7 @@ npx expo start --dev-client     # Start with development build
 npx expo r -c                   # Restart and clear cache
 npm run reset-project           # Reset app/ folder (custom script)
 ```
-🧼 -c flag = clear cache (helpful for fixing weird issues)
+> 🧼 `-c` flag = clear cache (helpful for fixing weird issues)
 
 🛠️ Build for Production
 ```
@@ -84,7 +84,7 @@ npx expo build:ios          # Build .ipa file (requires Apple credentials)
 npx eas build -p android    # Build for Android with EAS
 npx eas build -p ios        # Build for iOS with EAS
 ```
-Make sure to configure EAS with eas.json before using EAS Build.
+> Make sure to configure EAS with eas.json before using EAS Build.
 
 ## 📚 Learn More
 
