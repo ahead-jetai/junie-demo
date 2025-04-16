@@ -12,10 +12,12 @@ ChefAI is a smart cooking assistant powered by OpenAI and built using [JetBrains
 
    ```bash
    npm install
+   ```
 
 2. Start the app:
    ```bash
    npx expo start
+   ```
 
 3. Run the app on:
    - [Expo Go](https://expo.dev/go)
@@ -39,8 +41,50 @@ ChefAI was built with significant help from Junie in creating:
    - Recipe generation logic
    - DALL·E image generation prompts
    - Themed UI styling and dark mode
+   - Learn more: [Junie for IntelliJ-based IDEs →](https://www.jetbrains.com/guide/ai/article/junie/intellij-idea/)
 
-Learn more: [Junie for IntelliJ-based IDEs →](https://www.jetbrains.com/guide/ai/article/junie/intellij-idea/)
+## 📦 Scripts
+
+🔧 General
+
+```bash
+npm install           # Install all dependencies
+npx expo start        # Launch Expo developer tools in your browser
+```
+
+📱 Run the App
+```bash
+npx expo start --ios      # Open in iOS Simulator (Mac only)
+npx expo start --android  # Open in Android Emulator (or device)
+npx expo start --web      # Run the app in a web browser
+npx expo start            # Choose platform manually in terminal or browser
+```
+
+📱 Expo Go (physical devices)
+Scan the QR code shown in the terminal or browser after running:
+```bash
+npx expo start
+```
+Install the Expo Go app on your device.
+
+🔄 Development Utilities
+```bash
+npx expo start --dev-client     # Start with development build
+npx expo r -c                   # Restart and clear cache
+npm run reset-project           # Reset app/ folder (custom script)
+```
+🧼 -c flag = clear cache (helpful for fixing weird issues)
+
+🛠️ Build for Production
+```
+npx expo build:android      # Build APK or AAB (classic build service)
+npx expo build:ios          # Build .ipa file (requires Apple credentials)
+
+# New EAS Build system:
+npx eas build -p android    # Build for Android with EAS
+npx eas build -p ios        # Build for iOS with EAS
+```
+Make sure to configure EAS with eas.json before using EAS Build.
 
 ## 📚 Learn More
 
@@ -54,9 +98,10 @@ Learn more: [Junie for IntelliJ-based IDEs →](https://www.jetbrains.com/guide/
 
 ## 🔒 Environment
 
-Remember to add your API keys in a .env file (which is gitignored):
+Remember to add your [OpenRouter API] key  in a .env file (which is gitignored):
 
    ```bash
-   OPENAI_API_KEY=your-api-key
+   OPEN_ROUTER_API_KEY=your-open-router-api-key
    OPENAI_DALL_E_API_KEY=your-openai-dall-e-api-key
+   ```
 
