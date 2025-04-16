@@ -1,50 +1,62 @@
-# Welcome to your Expo app 👋
+# 🤖 ChefAI — Built with JetBrains Junie & Expo
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+ChefAI is a smart cooking assistant powered by OpenAI and built using [JetBrains Junie](https://www.jetbrains.com/guide/ai/article/junie/intellij-idea/), JetBrains' new AI coding agent. This app generates quick recipes and dish images from simple ingredient lists—all built in React Native using [Expo](https://expo.dev).
 
-## Get started
+> ✨ AI-powered. React Native fast. Junie assisted.
 
-1. Install dependencies
+---
+
+## 🚀 Getting Started
+
+1. Install dependencies:
 
    ```bash
    npm install
-   ```
 
-2. Start the app
+2. Start the app:
+   ```bash
+   npx expo start
+
+3. Run the app on:
+   - [Expo Go](https://expo.dev/go)
+   - Android/iOS Simulators
+   - Physical devices via QR code
+
+🧪 This project uses [file-based routing](https://docs.expo.dev/router/introduction/) in the app/ directory.
+
+## 🧠 Powered by JetBrains Junie
+
+JetBrains Junie is an AI coding agent built into IDEs like WebStorm, designed to assist in:
+
+   - Project execution plan proposal
+   - Writing code, docs, and tests
+   - Generating UI from prompts
+   - Integrating APIs (like Open AI, Google Gemini, Anthropic, etc...)
+
+ChefAI was built with significant help from Junie in creating:
+
+   - Step by step project execution plan
+   - Recipe generation logic
+   - DALL·E image generation prompts
+   - Themed UI styling and dark mode
+
+Learn more: [Junie for IntelliJ-based IDEs →](https://www.jetbrains.com/guide/ai/article/junie/intellij-idea/)
+
+## 📚 Learn More
+
+   - [Expo Docs](https://docs.expo.dev/)
+   - [JetBrains Junie Guide](https://www.jetbrains.com/guide/ai/)
+
+## 🤝 Community
+
+   - [JetBrains AI Community](https://www.jetbrains.com/ai/)
+
+
+## 🔒 Environment
+
+Remember to add your API keys in a .env file (which is gitignored):
 
    ```bash
-    npx expo start
-   ```
+   OPENAI_API_KEY=your-api-key
+   UNSPlASH_ACCESS_KEY=your-unsplash-key
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
