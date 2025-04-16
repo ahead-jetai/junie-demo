@@ -1,26 +1,31 @@
 /**
  * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Colors are now imported from the centralized theme.ts file for consistent styling.
  */
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+import theme from './theme';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: theme.colors.primaryText,
+    background: theme.colors.secondaryBg,
+    tint: theme.colors.accentRed,
+    icon: theme.colors.accentRed,
+    tabIconDefault: theme.colors.secondaryBg,
+    tabIconSelected: theme.colors.accentRed,
+    accent1: theme.colors.accentRed,
+    accent2: theme.colors.accentBlue,
+    accent3: theme.colors.secondaryBg,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: theme.colors.primaryText,
+    background: theme.colors.primaryBg,
+    tint: theme.colors.accentRed,
+    icon: theme.colors.accentRed,
+    tabIconDefault: theme.colors.secondaryBg,
+    tabIconSelected: theme.colors.accentRed,
+    accent1: theme.colors.accentRed,
+    accent2: theme.colors.accentBlue,
+    accent3: theme.colors.primaryText,
   },
 };
