@@ -58,5 +58,5 @@ Remember to add your API keys in a .env file (which is gitignored):
 
    ```bash
    OPENAI_API_KEY=your-api-key
-   UNSPlASH_ACCESS_KEY=your-unsplash-key
+   OPENAI_DALL_E_API_KEY=your-openai-dall-e-api-key
 
