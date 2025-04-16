@@ -30,18 +30,18 @@ ChefAI is a smart cooking assistant powered by OpenAI and built using [JetBrains
 
 JetBrains Junie is an AI coding agent built into IDEs like WebStorm, designed to assist in:
 
-   - Project execution plan proposal
-   - Writing code, docs, and tests
-   - Generating UI from prompts
-   - Integrating APIs (like Open AI, Google Gemini, Anthropic, etc...)
+- Project execution plan proposal
+- Writing code, docs, and tests
+- Generating UI from prompts
+- Integrating APIs (like Open AI, Google Gemini, Anthropic, etc...)
 
 ChefAI was built with significant help from Junie in creating:
 
-   - Step by step project execution plan
-   - Recipe generation logic
-   - DALL·E image generation prompts
-   - Themed UI styling and dark mode
-   - Learn more: [Junie for IntelliJ-based IDEs →](https://www.jetbrains.com/guide/ai/article/junie/intellij-idea/)
+- Step by step project execution plan
+- Recipe generation logic
+- DALL·E image generation prompts
+- Themed UI styling and dark mode
+- Learn more: [Junie for IntelliJ-based IDEs →](https://www.jetbrains.com/guide/ai/article/junie/intellij-idea/)
 
 ## 📦 Scripts
 
@@ -88,12 +88,12 @@ npx eas build -p ios        # Build for iOS with EAS
 
 ## 📚 Learn More
 
-   - [Expo Docs](https://docs.expo.dev/)
-   - [JetBrains Junie Guide](https://www.jetbrains.com/guide/ai/)
+- [Expo Docs](https://docs.expo.dev/)
+- [JetBrains Junie Guide](https://www.jetbrains.com/guide/ai/)
 
 ## 🤝 Community
 
-   - [JetBrains AI Community](https://www.jetbrains.com/ai/)
+- [JetBrains AI Community](https://www.jetbrains.com/ai/)
 
 
 ## 🔒 Environment
@@ -104,4 +104,3 @@ Remember to add your [OpenRouter API](https://openrouter.ai/) and [OpenAI](https
    OPEN_ROUTER_API_KEY=your-open-router-api-key
    OPENAI_DALL_E_API_KEY=your-openai-dall-e-api-key
    ```
-
