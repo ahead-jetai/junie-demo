@@ -98,7 +98,7 @@ npx eas build -p ios        # Build for iOS with EAS
 
 ## 🔒 Environment
 
-Remember to add your [OpenRouter API] key  in a .env file (which is gitignored):
+Remember to add your [OpenRouter API](https://openrouter.ai/) and [OpenAI](https://platform.openai.com/docs/overview) api keys in a .env file (which is gitignored):
 
    ```bash
    OPEN_ROUTER_API_KEY=your-open-router-api-key
