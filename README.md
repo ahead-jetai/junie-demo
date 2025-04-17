@@ -43,6 +43,20 @@ ChefAI was built with significant help from Junie in creating:
 - Themed UI styling and dark mode
 - Learn more: [Junie for IntelliJ-based IDEs →](https://www.jetbrains.com/guide/ai/article/junie/intellij-idea/)
 
+## 📘 Junie Guidelines
+
+This project includes a [`.junie/guidelines.md`](.junie/guidelines.md) file to help JetBrains Junie better understand and contribute to the codebase.
+
+Junie uses this file to:
+
+- Learn the project structure and tech stack
+- Understand how to run scripts and tests
+- Follow your team’s best practices
+- Avoid common mistakes by referencing custom hints
+
+> You can auto-generate this file by asking Junie to analyze the project or create it manually from scratch. Clear instructions improve Junie's effectiveness — think of it as giving your AI teammate onboarding docs.
+
+
 ## 📦 Scripts
 
 🔧 General
