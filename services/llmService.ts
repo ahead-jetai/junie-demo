@@ -288,7 +288,7 @@ async function callOpenRouterAPI(prompt: string): Promise<string> {
 
     if (!response.ok) {
       console.error(`API request failed with status ${response.status}`);
-      throw new Error(`API request failed with status ${response.status}`);
+      return ""; // Return empty string instead of throwing error
     }
 
     const data = await response.json();
@@ -398,8 +398,8 @@ async function parseRecipeResponse(response: string, ingredientList: string[]): 
 
       if (inInstructionsSection) {
         // Look for numbered steps or bullet points
-        if (line.match(/^\s*\d+[\.)]\s+/) || line.match(/^\s*[-*•]\s+/)) {
-          instructions.push(line.replace(/^\s*\d+[\.)]\s+/, '').replace(/^\s*[-*•]\s+/, '').trim());
+        if (line.match(/^\s*\d+[.)]\s+/) || line.match(/^\s*[-*•]\s+/)) {
+          instructions.push(line.replace(/^\s*\d+[.)]\s+/, '').replace(/^\s*[-*•]\s+/, '').trim());
         }
       }
     }
@@ -532,226 +532,7 @@ async function generateImageWithDallE(ingredients: string[], dishType?: string):
   }
 }
 
-/**
- * Generate an image using the DeepAI text2img API based on recipe description
- * @param description - Text description of the image to generate (e.g., recipe title, main ingredients)
- * @param dishType - Type of dish (e.g., pasta, salad, soup) if available
- * @returns A Promise that resolves to an image URL
- */
-async function generateImageWithDeepAI(description: string, dishType?: string): Promise<string | null> {
-  console.log("Generating image with DeepAI for description:", description);
 
-  try {
-    // Get the DeepAI API key from environment variables
-    const DEEP_AI_API_KEY = Constants.expoConfig.extra.DEEP_AI_API_KEY || '';
-
-    if (!DEEP_AI_API_KEY) {
-      console.warn("DeepAI API key not found in environment variables. Using fallback image.");
-      return null;
-    }
-
-    // Enhance the description with dish type and food-related terms
-    let enhancedDescription = '';
-
-    if (dishType && dishType.length > 0) {
-      // If we have a dish type, make it the primary term
-      enhancedDescription = `A delicious ${dishType} dish`;
-
-      // Add the description as secondary terms
-      if (description && description.trim().length > 0) {
-        enhancedDescription += ` with ${description}`;
-      }
-    } else {
-      // If no dish type, use the description directly
-      enhancedDescription = description;
-    }
-
-    // Always add food-related terms to ensure we get food images
-    enhancedDescription += `, food photography, professional, high quality, appetizing, mouth-watering, gourmet`;
-
-    // Log the request configuration
-    console.log("DeepAI API request:", {
-      description: enhancedDescription
-    });
-
-    // Make the API call to DeepAI text2img endpoint
-    const response = await fetch('https://api.deepai.org/api/text2img', {
-      method: 'POST',
-      headers: {
-        'api-key': DEEP_AI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        text: enhancedDescription
-      })
-    });
-
-    if (!response.ok) {
-      console.error(`DeepAI API request failed with status ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-
-    // Check if the response contains an output URL
-    if (data && data.output_url) {
-      console.log("Generated image with DeepAI:", data.output_url);
-      return data.output_url;
-    } else {
-      console.error("DeepAI API response did not contain an output URL:", data);
-      return null;
-    }
-  } catch (error) {
-    console.error("Error calling DeepAI API:", error);
-    return null;
-  }
-}
-
-/**
- * Search for a relevant image on Unsplash based on recipe keywords (fallback method)
- * @param keywords - Keywords to search for (e.g., recipe title, main ingredients)
- * @param dishType - Type of dish (e.g., pasta, salad, soup) if available
- * @returns A Promise that resolves to an image URL
- */
-async function searchUnsplashImage(keywords: string, dishType?: string): Promise<string | null> {
-  console.log("Searching Unsplash for image with keywords (fallback method):", keywords);
-
-  try {
-    // Get the Unsplash API key from environment variables
-    const UNSPLASH_ACCESS_KEY = Constants.expoConfig.extra.UNSPLASH_ACCESS_KEY || '';
-
-    if (!UNSPLASH_ACCESS_KEY) {
-      console.warn("Unsplash API key not found in environment variables. Using fallback image.");
-      return null;
-    }
-
-    // Food photography collection IDs on Unsplash
-    // These collections contain high-quality food images
-    const foodCollectionIds = [
-      '4232315', // Food & Drink
-      '3178572', // Food Photography
-      '8961198', // Food styling
-      '494263',  // Delicious Food
-      '2188972'  // Cooking
-    ];
-
-    // Prioritize dish type in the query if available
-    let enhancedQuery = '';
-
-    if (dishType && dishType.length > 0) {
-      // If we have a dish type, make it the primary search term
-      enhancedQuery = `${dishType} dish`;
-
-      // Add the keywords as secondary terms
-      if (keywords && keywords.trim().length > 0) {
-        enhancedQuery += ` with ${keywords}`;
-      }
-    } else {
-      // If no dish type, use the keywords directly
-      enhancedQuery = keywords;
-    }
-
-    // Always add food-related terms to ensure we get food images
-    enhancedQuery = `${enhancedQuery} food recipe`;
-
-    // Construct the API URL with improved parameters
-    const query = encodeURIComponent(enhancedQuery);
-
-    // Add a timestamp to prevent caching
-    const timestamp = new Date().getTime();
-
-    // Join the collection IDs with commas
-    const collections = foodCollectionIds.join(',');
-
-    // Use the /photos/random endpoint with collections parameter
-    // collections parameter ensures we get images from food-specific collections
-    // content_filter=high ensures we get high-quality images
-    // orientation=landscape works better for recipe displays
-    const API_URL = `https://api.unsplash.com/photos/random?query=${query}&collections=${collections}&count=1&content_filter=high&orientation=landscape&t=${timestamp}`;
-
-    // Log the request configuration
-    console.log("Unsplash API request:", {
-      url: API_URL,
-      enhancedQuery: enhancedQuery,
-      collections: collections
-    });
-
-    // Make the API call
-    const response = await fetch(API_URL, {
-      method: "GET",
-      headers: {
-        "Authorization": `Client-ID ${UNSPLASH_ACCESS_KEY}`,
-        "Content-Type": "application/json"
-      }
-    });
-
-    if (!response.ok) {
-      console.error(`Unsplash API request failed with status ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-
-    // Process the response from the /photos/random endpoint
-    // When count=1, it returns an array with a single photo object
-    if (Array.isArray(data) && data.length > 0) {
-      const imageUrl = data[0].urls.regular;
-      console.log("Found random image on Unsplash from food collections:", imageUrl);
-      return imageUrl;
-    } 
-    // If data is a single object (when count parameter is not used)
-    else if (data && data.urls) {
-      const imageUrl = data.urls.regular;
-      console.log("Found random image on Unsplash from food collections:", imageUrl);
-      return imageUrl;
-    }
-    else {
-      // Try without collections if specific search failed
-      console.log("No images found in food collections, trying general search...");
-
-      // Retry without collections parameter
-      const generalAPI_URL = `https://api.unsplash.com/photos/random?query=${query}&count=1&content_filter=high&orientation=landscape&t=${timestamp}`;
-
-      const generalResponse = await fetch(generalAPI_URL, {
-        method: "GET",
-        headers: {
-          "Authorization": `Client-ID ${UNSPLASH_ACCESS_KEY}`,
-          "Content-Type": "application/json"
-        }
-      });
-
-      if (!generalResponse.ok) {
-        console.error(`General Unsplash API request failed with status ${generalResponse.status}`);
-        return null;
-      }
-
-      const generalData = await generalResponse.json();
-
-      if (Array.isArray(generalData) && generalData.length > 0) {
-        const imageUrl = generalData[0].urls.regular;
-        console.log("Found random image on Unsplash from general search:", imageUrl);
-        return imageUrl;
-      } 
-      else if (generalData && generalData.urls) {
-        const imageUrl = generalData.urls.regular;
-        console.log("Found random image on Unsplash from general search:", imageUrl);
-        return imageUrl;
-      }
-
-      // If all else fails, try a very generic food search
-      if (!enhancedQuery.includes("food photography")) {
-        console.log("No specific images found, trying generic food photography search...");
-        return searchUnsplashImage("food photography dish", null);
-      }
-
-      console.log("No images found on Unsplash for keywords:", keywords);
-      return null;
-    }
-  } catch (error) {
-    console.error("Error calling Unsplash API:", error);
-    return null;
-  }
-}
 
 /**
  * Create a fallback recipe in case the API call fails
