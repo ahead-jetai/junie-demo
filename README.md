@@ -56,6 +56,7 @@ Junie uses this file to:
 
 > You can auto-generate this file by asking Junie to analyze the project or create it manually from scratch. Clear instructions improve Junie's effectiveness — think of it as giving your AI teammate onboarding docs.
 
+![Example Junie Guidelines Prompt](assets/images/screenshots/junie-guidelines-prompt-image.png)
 
 ## 📦 Scripts
 
