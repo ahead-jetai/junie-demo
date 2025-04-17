@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
@@ -30,46 +31,61 @@ export default function ProfileScreen() {
 
   if (authLoading) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.tint} />
-      </ThemedView>
+        <SafeAreaProvider>
+          <SafeAreaView
+            style={[styles.loadingContainer, { backgroundColor: colors.background }]}
+            edges={['top', 'bottom', 'left', 'right']}
+          >
+            <ActivityIndicator size="large" color={colors.tint} />
+          </SafeAreaView>
+        </SafeAreaProvider>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>Profile</ThemedText>
-      </View>
-
-      <View style={styles.profileInfo}>
-        <ThemedText style={styles.label}>Email</ThemedText>
-        <ThemedText style={styles.value}>{user?.email}</ThemedText>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statValue}>0</ThemedText>
-          <ThemedText style={styles.statLabel}>Recipes</ThemedText>
-        </View>
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statValue}>0</ThemedText>
-          <ThemedText style={styles.statLabel}>Favorites</ThemedText>
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.tint }]}
-        onPress={handleSignOut}
-        disabled={signingOut}
+  <SafeAreaProvider>
+    <SafeAreaView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top', 'bottom', 'left', 'right']}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        {signingOut ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <ThemedText style={styles.buttonText}>Sign Out</ThemedText>
-        )}
-      </TouchableOpacity>
-    </ThemedView>
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>Profile</ThemedText>
+        </View>
+
+        <View style={styles.profileInfo}>
+          <ThemedText style={styles.label}>Email</ThemedText>
+          <ThemedText style={styles.value}>{user?.email}</ThemedText>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statValue}>0</ThemedText>
+            <ThemedText style={styles.statLabel}>Recipes</ThemedText>
+          </View>
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statValue}>0</ThemedText>
+            <ThemedText style={styles.statLabel}>Favorites</ThemedText>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.tint }]}
+          onPress={handleSignOut}
+          disabled={signingOut}
+        >
+          {signingOut ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <ThemedText style={styles.buttonText}>Sign Out</ThemedText>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+  </SafeAreaProvider>
   );
 }
 
@@ -78,13 +94,18 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
-    marginTop: 60,
+    marginTop: 10,
     marginBottom: 40,
     alignItems: 'center',
   },

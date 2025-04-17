@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -64,39 +65,56 @@ export default function AuthCallbackScreen() {
   }, [params, router]);
 
   return (
-    <ThemedView style={styles.container}>
-      {status === 'loading' && (
-        <>
-          <ActivityIndicator size="large" color={colors.tint} />
-          <ThemedText style={styles.text}>Verifying your account...</ThemedText>
-        </>
-      )}
+    <SafeAreaView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top', 'bottom', 'left', 'right']}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {status === 'loading' && (
+          <View style={styles.contentContainer}>
+            <ActivityIndicator size="large" color={colors.tint} />
+            <ThemedText style={styles.text}>Verifying your account...</ThemedText>
+          </View>
+        )}
 
-      {status === 'success' && (
-        <>
-          <ThemedText style={styles.title}>Success!</ThemedText>
-          <ThemedText style={styles.text}>Your account has been verified.</ThemedText>
-          <ThemedText style={styles.text}>Redirecting to sign in...</ThemedText>
-        </>
-      )}
+        {status === 'success' && (
+          <View style={styles.contentContainer}>
+            <ThemedText style={styles.title}>Success!</ThemedText>
+            <ThemedText style={styles.text}>Your account has been verified.</ThemedText>
+            <ThemedText style={styles.text}>Redirecting to sign in...</ThemedText>
+          </View>
+        )}
 
-      {status === 'error' && (
-        <>
-          <ThemedText style={styles.title}>Error</ThemedText>
-          <ThemedText style={styles.text}>{errorMessage}</ThemedText>
-          <ThemedText style={styles.text}>Redirecting...</ThemedText>
-        </>
-      )}
-    </ThemedView>
+        {status === 'error' && (
+          <View style={styles.contentContainer}>
+            <ThemedText style={styles.title}>Error</ThemedText>
+            <ThemedText style={styles.text}>{errorMessage}</ThemedText>
+            <ThemedText style={styles.text}>Redirecting...</ThemedText>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
+  contentContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    minHeight: 400, // Ensure there's enough height for the content
   },
   title: {
     fontSize: 24,

@@ -8,6 +8,7 @@ import Constants from 'expo-constants';
 
 // Recipe type definition
 export interface Recipe {
+  id?: string; // Database ID (when saved to Supabase)
   title: string;
   description: string;
   image: string;

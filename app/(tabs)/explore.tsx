@@ -9,8 +9,9 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { generateRecipeWithLLM, Recipe } from '@/services/llmService';
-import { addFavoriteRecipe, removeFavoriteRecipe, isRecipeFavorite } from '@/services/favoritesService';
-import { addRecentRecipe, getRecentRecipes } from '@/services/recentRecipesService';
+import { addFavoriteRecipe, removeFavoriteRecipe, isRecipeFavorite } from '@/services/favoritesServiceSupabase';
+import { addRecentRecipe, getRecentRecipes } from '@/services/recentRecipesServiceSupabase';
+import { saveRecipe } from '@/services/recipeService';
 import RecipeModal from '@/components/RecipeModal';
 
 // Function to generate a recipe based on ingredients using an LLM API
@@ -46,7 +47,12 @@ export default function RecipeScreen() {
     setSelectedRecipe(recipe);
 
     // Check if this recipe is a favorite
-    const favorite = await isRecipeFavorite(recipe.title);
+    // If the recipe has an ID (from the database), use it to check
+    const recipeId = (recipe as any).id;
+    const favorite = recipeId 
+      ? await isRecipeFavorite(recipeId)
+      : await isRecipeFavorite(recipe.title);
+
     setSelectedRecipeIsFavorite(favorite);
 
     setModalVisible(true);
@@ -58,14 +64,32 @@ export default function RecipeScreen() {
 
     try {
       if (selectedRecipeIsFavorite) {
+        // If the recipe has an ID (from the database), use it for removal
+        const recipeId = (selectedRecipe as any).id;
         // Remove from favorites
-        const success = await removeFavoriteRecipe(selectedRecipe.title);
+        const success = recipeId 
+          ? await removeFavoriteRecipe(recipeId)
+          : await removeFavoriteRecipe(selectedRecipe.title);
+
         if (success) {
           setSelectedRecipeIsFavorite(false);
         }
       } else {
+        // Ensure the recipe is saved to the database before adding to favorites
+        let recipeToFavorite = selectedRecipe;
+
+        // If the recipe doesn't have an ID, save it first
+        if (!(selectedRecipe as any).id) {
+          const savedRecipe = await saveRecipe(selectedRecipe);
+          if (savedRecipe) {
+            recipeToFavorite = savedRecipe;
+            // Update the selected recipe with the saved version (including ID)
+            setSelectedRecipe(savedRecipe);
+          }
+        }
+
         // Add to favorites
-        const success = await addFavoriteRecipe(selectedRecipe);
+        const success = await addFavoriteRecipe(recipeToFavorite);
         if (success) {
           setSelectedRecipeIsFavorite(true);
         }
@@ -83,14 +107,27 @@ export default function RecipeScreen() {
           setLoading(true);
           // Call the generateRecipe function which now uses the LLM API
           const recipeData = await generateRecipe(ingredients);
-          setRecipe(recipeData);
+
+          // Save the recipe to the database
+          const savedRecipe = await saveRecipe(recipeData);
+
+          // If the recipe was saved successfully, use the saved recipe (which includes the ID)
+          const recipeToUse = savedRecipe || recipeData;
+
+          // Update the recipe state with the saved version (including ID)
+          setRecipe(recipeToUse);
 
           // Check if this recipe is already a favorite
-          const favorite = await isRecipeFavorite(recipeData.title);
+          // If the recipe has an ID (from the database), use it to check
+          const recipeId = (recipeToUse as any).id;
+          const favorite = recipeId 
+            ? await isRecipeFavorite(recipeId)
+            : await isRecipeFavorite(recipeToUse.title);
+
           setIsFavorite(favorite);
 
           // Add to recent recipes
-          await addRecentRecipe(recipeData);
+          await addRecentRecipe(recipeToUse);
 
           // Refresh the recent recipes list
           await fetchRecentRecipes();
@@ -118,14 +155,30 @@ export default function RecipeScreen() {
 
     try {
       if (isFavorite) {
+        // If the recipe has an ID (from the database), use it for removal
+        const recipeId = (recipe as any).id;
         // Remove from favorites
-        const success = await removeFavoriteRecipe(recipe.title);
+        const success = recipeId 
+          ? await removeFavoriteRecipe(recipeId)
+          : await removeFavoriteRecipe(recipe.title);
+
         if (success) {
           setIsFavorite(false);
         }
       } else {
+        // Ensure the recipe is saved to the database before adding to favorites
+        let recipeToFavorite = recipe;
+
+        // If the recipe doesn't have an ID, save it first
+        if (!(recipe as any).id) {
+          const savedRecipe = await saveRecipe(recipe);
+          if (savedRecipe) {
+            recipeToFavorite = savedRecipe;
+          }
+        }
+
         // Add to favorites
-        const success = await addFavoriteRecipe(recipe);
+        const success = await addFavoriteRecipe(recipeToFavorite);
         if (success) {
           setIsFavorite(true);
         }
@@ -274,7 +327,7 @@ export default function RecipeScreen() {
                 </ThemedView>
                 <FlatList
                   data={recentRecipes}
-                  keyExtractor={(item) => item.title}
+                  keyExtractor={(item) => item.id ? `id-${item.id}` : `title-${item.title}-${item.prepTime}`}
                   renderItem={({ item }) => (
                     <TouchableOpacity 
                       style={[styles.recentRecipeItem, { backgroundColor: colorScheme === 'dark' ? '#000000' : '#1A1A1A' }]}

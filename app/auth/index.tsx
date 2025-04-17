@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { SafeAreaView , SafeAreaProvider} from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -55,58 +56,68 @@ export default function AuthScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>ChefAI</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          {isSignUp ? 'Create an account' : 'Sign in to your account'}
-        </ThemedText>
-      </View>
-
-      <View style={styles.form}>
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-          placeholder="Email"
-          placeholderTextColor={colors.text + '80'}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-          placeholder="Password"
-          placeholderTextColor={colors.text + '80'}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.tint }]}
-          onPress={handleAuth}
-          disabled={loading}
+      <SafeAreaProvider>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: colors.background }]}
+          edges={['top', 'bottom', 'left', 'right']}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <ThemedText style={styles.buttonText}>
-              {isSignUp ? 'Sign Up' : 'Sign In'}
-            </ThemedText>
-          )}
-        </TouchableOpacity>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.header}>
+              <ThemedText style={styles.title}>ChefAI</ThemedText>
+              <ThemedText style={styles.subtitle}>
+                {isSignUp ? 'Create an account' : 'Sign in to your account'}
+              </ThemedText>
+            </View>
 
-        <TouchableOpacity
-          style={styles.switchButton}
-          onPress={() => setIsSignUp(!isSignUp)}
-        >
-          <ThemedText style={styles.switchButtonText}>
-            {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
-    </ThemedView>
+            <View style={styles.form}>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                placeholder="Email"
+                placeholderTextColor={colors.text + '80'}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                placeholder="Password"
+                placeholderTextColor={colors.text + '80'}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: colors.tint }]}
+                onPress={handleAuth}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText style={styles.buttonText}>
+                    {isSignUp ? 'Sign Up' : 'Sign In'}
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.switchButton}
+                onPress={() => setIsSignUp(!isSignUp)}
+              >
+                <ThemedText style={styles.switchButtonText}>
+                  {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </SafeAreaProvider>
   );
 }
 
@@ -115,8 +126,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
   header: {
-    marginTop: 60,
+    marginTop: 10,
     marginBottom: 40,
     alignItems: 'center',
   },

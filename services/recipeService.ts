@@ -9,12 +9,12 @@ import { Recipe } from './llmService';
 export async function saveRecipe(recipe: Recipe): Promise<Recipe | null> {
   try {
     const user = await getCurrentUser();
-    
+
     if (!user) {
       console.error('Cannot save recipe: User not authenticated');
       return null;
     }
-    
+
     // Convert recipe to database format
     const recipeData = {
       user_id: user.id,
@@ -28,21 +28,22 @@ export async function saveRecipe(recipe: Recipe): Promise<Recipe | null> {
       is_dalle_image: recipe.isDallEImage || false,
       created_at: new Date().toISOString(),
     };
-    
+
     // Insert recipe into database
     const { data, error } = await supabase
       .from('recipes')
       .insert(recipeData)
       .select()
       .single();
-    
+
     if (error) {
       console.error('Error saving recipe:', error.message);
       return null;
     }
-    
+
     // Convert database format back to Recipe
     return {
+      id: data.id,
       title: data.title,
       description: data.description,
       image: data.image,
@@ -65,26 +66,27 @@ export async function saveRecipe(recipe: Recipe): Promise<Recipe | null> {
 export async function getUserRecipes(): Promise<Recipe[]> {
   try {
     const user = await getCurrentUser();
-    
+
     if (!user) {
       console.error('Cannot get recipes: User not authenticated');
       return [];
     }
-    
+
     // Query recipes for current user
     const { data, error } = await supabase
       .from('recipes')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('Error getting recipes:', error.message);
       return [];
     }
-    
+
     // Convert database format to Recipe objects
     return data.map(item => ({
+      id: item.id,
       title: item.title,
       description: item.description,
       image: item.image,
@@ -113,14 +115,15 @@ export async function getRecipeById(recipeId: string): Promise<Recipe | null> {
       .select('*')
       .eq('id', recipeId)
       .single();
-    
+
     if (error) {
       console.error('Error getting recipe:', error.message);
       return null;
     }
-    
+
     // Convert database format to Recipe
     return {
+      id: data.id,
       title: data.title,
       description: data.description,
       image: data.image,
@@ -145,12 +148,12 @@ export async function getRecipeById(recipeId: string): Promise<Recipe | null> {
 export async function updateRecipe(recipeId: string, recipe: Recipe): Promise<Recipe | null> {
   try {
     const user = await getCurrentUser();
-    
+
     if (!user) {
       console.error('Cannot update recipe: User not authenticated');
       return null;
     }
-    
+
     // Convert recipe to database format
     const recipeData = {
       title: recipe.title,
@@ -163,7 +166,7 @@ export async function updateRecipe(recipeId: string, recipe: Recipe): Promise<Re
       is_dalle_image: recipe.isDallEImage || false,
       updated_at: new Date().toISOString(),
     };
-    
+
     // Update recipe in database
     const { data, error } = await supabase
       .from('recipes')
@@ -172,14 +175,15 @@ export async function updateRecipe(recipeId: string, recipe: Recipe): Promise<Re
       .eq('user_id', user.id) // Ensure user owns the recipe
       .select()
       .single();
-    
+
     if (error) {
       console.error('Error updating recipe:', error.message);
       return null;
     }
-    
+
     // Convert database format back to Recipe
     return {
+      id: data.id,
       title: data.title,
       description: data.description,
       image: data.image,
@@ -203,24 +207,24 @@ export async function updateRecipe(recipeId: string, recipe: Recipe): Promise<Re
 export async function deleteRecipe(recipeId: string): Promise<boolean> {
   try {
     const user = await getCurrentUser();
-    
+
     if (!user) {
       console.error('Cannot delete recipe: User not authenticated');
       return false;
     }
-    
+
     // Delete recipe from database
     const { error } = await supabase
       .from('recipes')
       .delete()
       .eq('id', recipeId)
       .eq('user_id', user.id); // Ensure user owns the recipe
-    
+
     if (error) {
       console.error('Error deleting recipe:', error.message);
       return false;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error deleting recipe:', error);

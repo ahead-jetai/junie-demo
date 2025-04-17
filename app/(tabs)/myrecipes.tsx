@@ -9,7 +9,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Recipe } from '@/services/llmService';
-import { getFavoriteRecipes, removeFavoriteRecipe, clearFavoritesCache } from '@/services/favoritesService';
+import { getFavoriteRecipes, removeFavoriteRecipe, clearFavoritesCache } from '@/services/favoritesServiceSupabase';
 
 export default function MyRecipesScreen() {
   const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
@@ -104,7 +104,7 @@ export default function MyRecipesScreen() {
   };
 
   // Function to handle removing a recipe from favorites
-  const handleRemoveFavorite = async (recipeTitle: string) => {
+  const handleRemoveFavorite = async (recipe: Recipe) => {
     // Only proceed if the component is still mounted
     if (!isMounted.current) {
       console.log('Component unmounted, skipping handleRemoveFavorite');
@@ -112,13 +112,26 @@ export default function MyRecipesScreen() {
     }
 
     try {
-      const success = await removeFavoriteRecipe(recipeTitle);
+      // Use recipe ID if available, otherwise use title
+      const recipeId = recipe.id;
+      const recipeTitle = recipe.title;
+
+      const success = recipeId 
+        ? await removeFavoriteRecipe(recipeId)
+        : await removeFavoriteRecipe(recipeTitle);
+
       if (success && isMounted.current) {
         setFavoriteRecipes(prevRecipes => 
-          prevRecipes.filter(recipe => recipe.title !== recipeTitle)
+          prevRecipes.filter(r => 
+            // Filter by ID if both have IDs, otherwise fall back to title
+            (r.id && recipe.id) ? r.id !== recipe.id : r.title !== recipe.title
+          )
         );
 
-        if (selectedRecipe && selectedRecipe.title === recipeTitle && isMounted.current) {
+        if (selectedRecipe && 
+            ((selectedRecipe.id && recipe.id && selectedRecipe.id === recipe.id) || 
+             (!selectedRecipe.id && !recipe.id && selectedRecipe.title === recipe.title)) && 
+            isMounted.current) {
           setModalVisible(false);
         }
       }
@@ -148,7 +161,7 @@ export default function MyRecipesScreen() {
 
     // Function to handle removing the recipe from favorites
     const handleRemove = () => {
-      handleRemoveFavorite(item.title);
+      handleRemoveFavorite(item);
     };
 
     return (
@@ -215,7 +228,7 @@ export default function MyRecipesScreen() {
         <FlatList
           data={favoriteRecipes}
           renderItem={renderRecipeItem}
-          keyExtractor={(item) => item.title}
+          keyExtractor={(item) => item.id ? `id-${item.id}` : `title-${item.title}-${item.prepTime}`}
           contentContainerStyle={styles.listContainer}
         />
       )}
@@ -226,7 +239,7 @@ export default function MyRecipesScreen() {
         visible={modalVisible}
         isFavorite={true}
         onClose={() => setModalVisible(false)}
-        onToggleFavorite={() => selectedRecipe && handleRemoveFavorite(selectedRecipe.title)}
+        onToggleFavorite={() => selectedRecipe && handleRemoveFavorite(selectedRecipe)}
       />
     </ThemedView>
   );
