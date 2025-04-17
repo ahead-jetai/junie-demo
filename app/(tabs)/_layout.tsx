@@ -102,6 +102,25 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol 
+              size={28} 
+              name="person.fill" 
+              color={focused ? colors.accent1 : color} 
+              style={focused ? {
+                shadowColor: colors.accent1,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.8,
+                shadowRadius: 5,
+              } : undefined}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
