@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Recipe } from './llmService';
+import { RecipeGenerationMetadata } from './recipeMetadataService';
 
 // Resolve Supabase URL and publishable key from multiple sources to be robust across environments
 const extra = (Constants as any)?.expoConfig?.extra || (Constants as any)?.manifestExtra || {};
@@ -678,5 +679,288 @@ export async function getUserGeneratedRecipesCount(): Promise<number> {
   } catch (error) {
     console.error('[Supabase DB] Exception in getUserGeneratedRecipesCount:', error);
     return 0;
+  }
+}
+
+// ============================================================================
+// AI ANALYTICS QUERIES FOR USAGE METRICS
+// ============================================================================
+
+export interface AIAnalytics {
+  recipesGenerated: number;
+  favoritesAdded: number;
+  recentRecipeViews: number;
+  averageSessionLength: number;
+  mostActiveDay: string;
+  engagementScore: number;
+}
+
+/**
+ * Get AI analytics data for a specific time period
+ * @param days - Number of days to look back (1, 7, or 30)
+ * @returns AI analytics data
+ */
+export async function getAIAnalytics(days: number): Promise<AIAnalytics> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      recipesGenerated: 0,
+      favoritesAdded: 0,
+      recentRecipeViews: 0,
+      averageSessionLength: 0,
+      mostActiveDay: 'No data',
+      engagementScore: 0
+    };
+  }
+
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateISO = startDate.toISOString();
+
+    // Get recipes generated in the time period
+    const { data: recipesData, error: recipesError } = await supabase
+      .from('recipes')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', startDateISO);
+
+    if (recipesError) {
+      console.error('[Supabase DB] Error fetching recipes analytics:', recipesError);
+    }
+
+    // Get favorites added in the time period
+    const { data: favoritesData, error: favoritesError } = await supabase
+      .from('favorites')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', startDateISO);
+
+    if (favoritesError) {
+      console.error('[Supabase DB] Error fetching favorites analytics:', favoritesError);
+    }
+
+    // Get recent recipe views in the time period
+    const { data: recentData, error: recentError } = await supabase
+      .from('recent_recipes')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', startDateISO);
+
+    if (recentError) {
+      console.error('[Supabase DB] Error fetching recent recipes analytics:', recentError);
+    }
+
+    const recipesGenerated = recipesData?.length || 0;
+    const favoritesAdded = favoritesData?.length || 0;
+    const recentRecipeViews = recentData?.length || 0;
+
+    // Calculate most active day
+    const allActivity = [
+      ...(recipesData || []).map(r => r.created_at),
+      ...(favoritesData || []).map(f => f.created_at),
+      ...(recentData || []).map(r => r.created_at)
+    ];
+
+    const dayActivity: { [key: string]: number } = {};
+    allActivity.forEach(timestamp => {
+      const day = new Date(timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+      dayActivity[day] = (dayActivity[day] || 0) + 1;
+    });
+
+    const mostActiveDay = Object.keys(dayActivity).length > 0 
+      ? Object.entries(dayActivity).sort(([,a], [,b]) => b - a)[0][0]
+      : 'No data';
+
+    // Calculate engagement score (0-100)
+    const totalActivity = recipesGenerated + favoritesAdded + recentRecipeViews;
+    const maxPossibleActivity = days * 5; // Assuming 5 activities per day is high engagement
+    const engagementScore = Math.min(Math.round((totalActivity / maxPossibleActivity) * 100), 100);
+
+    // Calculate average session length (simplified metric based on activity frequency)
+    const averageSessionLength = totalActivity > 0 ? Math.round((totalActivity / days) * 10) : 0;
+
+    console.log(`[Supabase DB] AI Analytics for ${days} days:`, {
+      recipesGenerated,
+      favoritesAdded,
+      recentRecipeViews,
+      mostActiveDay,
+      engagementScore
+    });
+
+    return {
+      recipesGenerated,
+      favoritesAdded,
+      recentRecipeViews,
+      averageSessionLength,
+      mostActiveDay,
+      engagementScore
+    };
+  } catch (error) {
+    console.error('[Supabase DB] Exception in getAIAnalytics:', error);
+    return {
+      recipesGenerated: 0,
+      favoritesAdded: 0,
+      recentRecipeViews: 0,
+      averageSessionLength: 0,
+      mostActiveDay: 'No data',
+      engagementScore: 0
+    };
+  }
+}
+
+/**
+ * Get daily activity breakdown for the past week
+ * @returns Array of daily activity data
+ */
+export async function getDailyActivityBreakdown(): Promise<Array<{date: string, recipes: number, favorites: number, views: number}>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return [];
+  }
+
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    const startDateISO = startDate.toISOString();
+
+    // Get all activity data for the past week
+    const [recipesData, favoritesData, recentData] = await Promise.all([
+      supabase
+        .from('recipes')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .gte('created_at', startDateISO),
+      supabase
+        .from('favorites')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .gte('created_at', startDateISO),
+      supabase
+        .from('recent_recipes')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .gte('created_at', startDateISO)
+    ]);
+
+    // Group by date
+    const dailyData: { [key: string]: { recipes: number, favorites: number, views: number } } = {};
+
+    // Initialize all days with 0 values
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      dailyData[dateStr] = { recipes: 0, favorites: 0, views: 0 };
+    }
+
+    // Count recipes by date
+    recipesData.data?.forEach(recipe => {
+      const date = new Date(recipe.created_at).toISOString().split('T')[0];
+      if (dailyData[date]) {
+        dailyData[date].recipes++;
+      }
+    });
+
+    // Count favorites by date
+    favoritesData.data?.forEach(favorite => {
+      const date = new Date(favorite.created_at).toISOString().split('T')[0];
+      if (dailyData[date]) {
+        dailyData[date].favorites++;
+      }
+    });
+
+    // Count views by date
+    recentData.data?.forEach(recent => {
+      const date = new Date(recent.created_at).toISOString().split('T')[0];
+      if (dailyData[date]) {
+        dailyData[date].views++;
+      }
+    });
+
+    return Object.entries(dailyData).map(([date, data]) => ({
+      date,
+      ...data
+    }));
+  } catch (error) {
+    console.error('[Supabase DB] Exception in getDailyActivityBreakdown:', error);
+    return [];
+  }
+}
+
+// Extended interface for metadata with recipe details
+export interface MetadataWithRecipeDetails extends RecipeGenerationMetadata {
+  recipe?: {
+    id: string;
+    title: string;
+    description: string;
+    ingredients: string[];
+    instructions: string[];
+    prep_time: string;
+    cook_time: string;
+  };
+}
+
+/**
+ * Get raw metadata events with recipe details for the Raw Events display
+ * @param days - Number of days to look back (1, 7, or 30)
+ * @param limit - Maximum number of records to return (default: 50)
+ * @returns Array of raw metadata records with recipe details
+ */
+export async function getRawMetadataEvents(days: number, limit: number = 50): Promise<MetadataWithRecipeDetails[]> {
+  const user = await getCurrentUser();
+  if (!user) {
+    console.log('[Supabase DB] No authenticated user for getRawMetadataEvents');
+    return [];
+  }
+
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateISO = startDate.toISOString();
+
+    const { data, error } = await supabase
+      .from('recipe_generation_metadata')
+      .select(`
+        *,
+        recipes (
+          id,
+          title,
+          description,
+          ingredients,
+          instructions,
+          prep_time,
+          cook_time
+        )
+      `)
+      .eq('user_id', user.id)
+      .gte('created_at', startDateISO)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('[Supabase DB] Error fetching raw metadata events:', error);
+      return [];
+    }
+
+    // Transform the data to match our interface
+    const transformedData: MetadataWithRecipeDetails[] = (data || []).map(item => ({
+      ...item,
+      recipe: item.recipes ? {
+        id: item.recipes.id,
+        title: item.recipes.title,
+        description: item.recipes.description || '',
+        ingredients: Array.isArray(item.recipes.ingredients) ? item.recipes.ingredients : [],
+        instructions: Array.isArray(item.recipes.instructions) ? item.recipes.instructions : [],
+        prep_time: item.recipes.prep_time || '',
+        cook_time: item.recipes.cook_time || ''
+      } : undefined
+    }));
+
+    console.log(`[Supabase DB] Fetched ${transformedData.length} raw metadata events with recipe details for user ${user.id}`);
+    return transformedData;
+  } catch (error) {
+    console.error('[Supabase DB] Exception in getRawMetadataEvents:', error);
+    return [];
   }
 }
