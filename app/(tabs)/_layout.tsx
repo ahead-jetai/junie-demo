@@ -103,13 +103,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="stats"
         options={{
-          title: 'Profile',
+          title: 'Stats',
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol 
               size={28} 
-              name="person.fill" 
+              name="chart.bar.fill" 
               color={focused ? colors.accent1 : color} 
               style={focused ? {
                 shadowColor: colors.accent1,

@@ -160,10 +160,20 @@ CREATE POLICY "Users can delete their own recent recipes"
 Add the following to your `.env` file:
 
 ```
+# Required for the client (Expo app)
 SUPABASE_URL=your-supabase-url
-SUPABASE_PUBLIC_KEY=your-supabase-anon-key
-SUPABASE_SECRET_KEY=your-supabase-service-role-key
+SUPABASE_API_PUBLISHABLE_KEY=your-supabase-publishable-key
+
+# Optional: server-side only (DO NOT expose to the mobile app)
+SUPABASE_API_SECRET_KEY=your-supabase-secret-key
+# Optional: if you self-host or need to override
+SUPABASE_JWT_KEY=your-jwt-secret
 ```
+
+Notes:
+- SUPABASE_API_PUBLISHABLE_KEY replaces the legacy SUPABASE_PUBLIC_KEY (anon). The publishable key is safe for client use.
+- SUPABASE_API_SECRET_KEY replaces the legacy SUPABASE_SECRET_KEY (service_role). Never ship this in client bundles.
+- The app prefers the new names but keeps backward compatibility with the legacy variable names.
 
 ## Usage
 

@@ -350,6 +350,7 @@ export default function RecipeScreen() {
                       </View>
                     </TouchableOpacity>
                   )}
+                  scrollEnabled={false}
                   style={styles.recentRecipesList}
                 />
               </ThemedView>

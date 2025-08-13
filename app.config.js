@@ -13,7 +13,8 @@ export default {
             DEEP_AI_API_KEY: process.env.DEEP_AI_API_KEY,
             OPENAI_DALL_E_API_KEY: process.env.OPENAI_DALL_E_API_KEY,
             supabaseUrl: process.env.SUPABASE_URL,
-            supabaseAnonKey: process.env.SUPABASE_PUBLIC_KEY,
+            // Prefer new publishable key name, fall back to legacy anon key
+            supabaseAnonKey: process.env.SUPABASE_API_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLIC_KEY,
         },
         web: {
             bundler: 'metro',
