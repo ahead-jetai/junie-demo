@@ -4,6 +4,8 @@
  * Uses Unsplash API to find relevant images for recipes
  */
 import Constants from 'expo-constants';
+import { saveRecipeGenerationMetadata, updateRecipeGenerationMetadata, RecipeGenerationMetadata } from './recipeMetadataService';
+import { supabase } from './supabaseService';
 
 
 // Recipe type definition
@@ -18,6 +20,18 @@ export interface Recipe {
   instructions: string[];
   isDallEImage?: boolean; // Flag to indicate if the image is from DALL-E
 }
+
+// Progress step interface for recipe generation
+export interface RecipeGenerationStep {
+  id: number;
+  title: string;
+  description: string;
+  details?: any;
+  completed: boolean;
+}
+
+// Progress callback type
+export type ProgressCallback = (step: number, stepData: RecipeGenerationStep) => void;
 
 // Default food images to use when generating recipes
 const foodImages = [
@@ -173,10 +187,25 @@ function extractDistinctiveIngredients(ingredients: string[], maxCount: number =
 /**
  * Generate a recipe using the OpenRouter API
  * @param ingredients - Comma-separated list of ingredients
- * @returns A Promise that resolves to a Recipe object
+ * @param onProgress - Optional callback to report progress
+ * @returns A Promise that resolves to an object containing the Recipe and metadataId
  */
-export async function generateRecipeWithLLM(ingredients: string): Promise<Recipe> {
+export async function generateRecipeWithLLM(ingredients: string, onProgress?: ProgressCallback): Promise<{recipe: Recipe, metadataId: string | null}> {
   console.log("Starting recipe generation for ingredients:", ingredients);
+
+  // Initialize timing and metadata tracking
+  const generationStartTime = new Date();
+  let metadataId: string | null = null;
+  let llmResponseTime = 0;
+  let imageGenerationTime = 0;
+
+  // Get current user ID
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id;
+
+  if (!userId) {
+    console.warn("No authenticated user found, proceeding without metadata storage");
+  }
 
   try {
     // Format the ingredients into a list
@@ -187,22 +216,117 @@ export async function generateRecipeWithLLM(ingredients: string): Promise<Recipe
     const prompt = createRecipePrompt(ingredientList);
     console.log("Created prompt for LLM");
 
-    // Call the OpenRouter API
+    // Step 1: Calling LLM
+    const requestConfig = {
+      url: "https://openrouter.ai/api/v1/chat/completions",
+      model: "openai/gpt-3.5-turbo",
+      temperature: 0.7,
+      max_tokens: 1024
+    };
+    
+    onProgress?.(0, {
+      id: 1,
+      title: "Calling LLM",
+      description: `Sending request to ${requestConfig.model} with ${requestConfig.max_tokens} max tokens`,
+      details: requestConfig,
+      completed: false
+    });
+
+    // Initialize metadata record if user is authenticated
+    if (userId) {
+      const initialMetadata: RecipeGenerationMetadata = {
+        user_id: userId,
+        llm_model: requestConfig.model,
+        llm_url: requestConfig.url,
+        llm_temperature: requestConfig.temperature,
+        llm_max_tokens: requestConfig.max_tokens,
+        generation_start_time: generationStartTime.toISOString(),
+        ingredients_used: ingredientList,
+        generation_steps_completed: 0,
+        generation_success: false
+      };
+
+      const savedMetadata = await saveRecipeGenerationMetadata(initialMetadata);
+      if (savedMetadata) {
+        metadataId = savedMetadata.id!;
+        console.log("Created metadata record:", metadataId);
+      }
+    }
+
+    // Call the OpenRouter API with timing
     console.log("Calling OpenRouter API...");
-    const response = await callOpenRouterAPI(prompt);
+    const llmStartTime = Date.now();
+    const { response, tokenUsage } = await callOpenRouterAPI(prompt, onProgress);
+    llmResponseTime = Date.now() - llmStartTime;
     console.log("Received response from OpenRouter API");
+
+    // Update metadata with LLM response data
+    if (metadataId && tokenUsage) {
+      await updateRecipeGenerationMetadata(metadataId, {
+        prompt_tokens: tokenUsage.prompt_tokens,
+        completion_tokens: tokenUsage.completion_tokens,
+        reasoning_tokens: tokenUsage.completion_tokens_details?.reasoning_tokens || 0,
+        cached_tokens: tokenUsage.prompt_tokens_details?.cached_tokens || 0,
+        total_tokens: tokenUsage.total_tokens,
+        llm_response_time_ms: llmResponseTime,
+        generation_steps_completed: 2
+      });
+    }
 
     // Parse the response into a Recipe object
     console.log("Parsing LLM response into Recipe object...");
-    const recipe = await parseRecipeResponse(response, ingredientList);
+    const imageStartTime = Date.now();
+    const recipe = await parseRecipeResponse(response, ingredientList, onProgress, metadataId);
+    imageGenerationTime = Date.now() - imageStartTime;
+    
+    // Calculate total generation time
+    const generationEndTime = new Date();
+    const totalGenerationTime = generationEndTime.getTime() - generationStartTime.getTime();
+
+    // Final metadata update
+    if (metadataId) {
+      await updateRecipeGenerationMetadata(metadataId, {
+        generation_end_time: generationEndTime.toISOString(),
+        total_generation_time_ms: totalGenerationTime,
+        image_generation_time_ms: imageGenerationTime,
+        generation_steps_completed: 6,
+        generation_success: true,
+        is_dalle_image: recipe.isDallEImage || false
+      });
+    }
+    
+    // Step 6: Recipe successfully generated
+    onProgress?.(5, {
+      id: 6,
+      title: "Recipe Successfully Generated",
+      description: `Recipe "${recipe.title}" has been created successfully`,
+      details: { recipeName: recipe.title },
+      completed: true
+    });
+    
     console.log("Recipe successfully generated:", recipe.title);
 
-    return recipe;
+    return { recipe, metadataId };
   } catch (error) {
     console.error('Error generating recipe:', error);
+    
+    // Update metadata with error information
+    if (metadataId) {
+      const generationEndTime = new Date();
+      const totalGenerationTime = generationEndTime.getTime() - generationStartTime.getTime();
+      
+      await updateRecipeGenerationMetadata(metadataId, {
+        generation_end_time: generationEndTime.toISOString(),
+        total_generation_time_ms: totalGenerationTime,
+        generation_success: false,
+        error_message: error instanceof Error ? error.message : String(error)
+      });
+    }
+    
     console.log("Using fallback recipe due to error");
     // Return a fallback recipe in case of error
-    return await createFallbackRecipe(ingredients);
+    const fallbackRecipe = await createFallbackRecipe(ingredients, onProgress);
+    return { recipe: fallbackRecipe, metadataId };
   }
 }
 
@@ -230,9 +354,10 @@ For the image URL, please provide a link to a high-quality, appetizing image tha
 /**
  * Call the OpenRouter API
  * @param prompt - The prompt to send to the API
- * @returns The text response from the API
+ * @param onProgress - Optional callback to report progress
+ * @returns Object containing the text response and token usage data
  */
-async function callOpenRouterAPI(prompt: string): Promise<string> {
+async function callOpenRouterAPI(prompt: string, onProgress?: ProgressCallback): Promise<{response: string, tokenUsage: any}> {
   // For this implementation, we'll use the OpenRouter API
   // OpenRouter provides access to multiple LLM models through a single endpoint
 
@@ -300,7 +425,24 @@ async function callOpenRouterAPI(prompt: string): Promise<string> {
       content: data.choices[0].message.content.substring(0, 100) + "..." // Log first 100 chars to avoid huge logs
     });
 
-    return data.choices[0].message.content || "";
+    // Step 2: Received LLM Response
+    onProgress?.(1, {
+      id: 2,
+      title: "Received LLM Response",
+      description: `Received response from ${data.model || 'LLM'} with ${data.usage?.completion_tokens || 'unknown'} completion tokens`,
+      details: {
+        model: data.model,
+        completion_tokens: data.usage?.completion_tokens,
+        completion_tokens_details: data.usage?.completion_tokens_details,
+        total_tokens: data.usage?.total_tokens
+      },
+      completed: true
+    });
+
+    return {
+      response: data.choices[0].message.content || "",
+      tokenUsage: data.usage
+    };
   } catch (error) {
     console.error("Error calling OpenRouter API:", error);
     throw error;
@@ -311,10 +453,24 @@ async function callOpenRouterAPI(prompt: string): Promise<string> {
  * Parse the LLM response into a structured Recipe object
  * @param response - The text response from the LLM
  * @param ingredientList - The original list of ingredients
+ * @param onProgress - Optional callback to report progress
+ * @param metadataId - Optional metadata record ID for storing additional data
  * @returns A structured Recipe object
  */
-async function parseRecipeResponse(response: string, ingredientList: string[]): Promise<Recipe> {
+async function parseRecipeResponse(response: string, ingredientList: string[], onProgress?: ProgressCallback, metadataId?: string | null): Promise<Recipe> {
   try {
+    // Step 3: Parsing LLM Response
+    onProgress?.(2, {
+      id: 3,
+      title: "Parsing LLM Response",
+      description: "Extracting recipe information from LLM response",
+      details: {
+        responseLength: response.length,
+        ingredientCount: ingredientList.length
+      },
+      completed: false
+    });
+
     // Extract title (assume it's the first line)
     const lines = response.split('\n').filter(line => line.trim() !== '');
     let title = lines[0].replace(/^#\s*/, '').trim();
@@ -429,18 +585,74 @@ async function parseRecipeResponse(response: string, ingredientList: string[]): 
     const distinctiveIngredients = extractDistinctiveIngredients(parsedIngredientsList, 4);
     console.log("Distinctive ingredients for image search:", distinctiveIngredients);
 
+    // Update metadata with parsed recipe information
+    if (metadataId) {
+      await updateRecipeGenerationMetadata(metadataId, {
+        dish_type: dishType || null,
+        distinctive_ingredients: distinctiveIngredients,
+        generation_steps_completed: 3
+      });
+    }
+
+    // Update Step 3 with parsed recipe object details
+    onProgress?.(2, {
+      id: 3,
+      title: "Parsing LLM Response",
+      description: "Successfully parsed recipe information from LLM response",
+      details: {
+        dishType: dishType || "None detected",
+        distinctiveIngredients: distinctiveIngredients,
+        recipeObject: { title, description, prepTime, cookTime, ingredientCount: ingredients.length }
+      },
+      completed: true
+    });
+
+    // Step 4: Generating image with DALL-E 3 API
+    onProgress?.(3, {
+      id: 4,
+      title: "Generating image with DALL-E 3 API",
+      description: `Creating food image for ingredients: ${distinctiveIngredients.join(', ')}`,
+      details: {
+        ingredients: distinctiveIngredients,
+        dishType: dishType
+      },
+      completed: false
+    });
+
     // Generate an image using DALL-E 3 API
     console.log("Generating image with DALL-E 3 API");
-    let imageUrl = await generateImageWithDallE(distinctiveIngredients, dishType);
+    let imageUrl = await generateImageWithDallE(distinctiveIngredients, dishType, onProgress, metadataId);
     let isDallEImage = false;
 
     // If DALL-E API call succeeds, set the flag
     if (imageUrl) {
       isDallEImage = true;
+      // Step 5: Generated image with DALL-E 3
+      onProgress?.(4, {
+        id: 5,
+        title: "Generated image with DALL-E 3",
+        description: "Successfully generated recipe image using DALL-E 3",
+        details: {
+          imageUrl: imageUrl,
+          isDallEImage: true
+        },
+        completed: true
+      });
     } else {
       // If DALL-E API call fails, fall back to random image
       console.log("DALL-E API call failed, using random image from predefined collection");
       imageUrl = foodImages[Math.floor(Math.random() * foodImages.length)];
+      // Step 5: Using fallback image
+      onProgress?.(4, {
+        id: 5,
+        title: "Using fallback image",
+        description: "DALL-E 3 API failed, using predefined food image",
+        details: {
+          imageUrl: imageUrl,
+          isDallEImage: false
+        },
+        completed: true
+      });
     }
 
     const finalImage = imageUrl;
@@ -466,9 +678,11 @@ async function parseRecipeResponse(response: string, ingredientList: string[]): 
  * Generate an image using the OpenAI DALL-E 3 API based on recipe ingredients
  * @param ingredients - List of ingredients to include in the prompt
  * @param dishType - Type of dish (e.g., pasta, salad, soup) if available
+ * @param onProgress - Optional callback to report progress
+ * @param metadataId - Optional metadata record ID for storing image generation data
  * @returns A Promise that resolves to an image URL
  */
-async function generateImageWithDallE(ingredients: string[], dishType?: string): Promise<string | null> {
+async function generateImageWithDallE(ingredients: string[], dishType?: string, onProgress?: ProgressCallback, metadataId?: string | null): Promise<string | null> {
   console.log("Generating image with DALL-E 3 for ingredients:", ingredients);
 
   try {
@@ -493,6 +707,15 @@ async function generateImageWithDallE(ingredients: string[], dishType?: string):
     console.log("DALL-E API request:", {
       prompt: prompt
     });
+
+    // Store image generation metadata
+    if (metadataId) {
+      await updateRecipeGenerationMetadata(metadataId, {
+        image_model: "dall-e-3",
+        image_generation_prompt: prompt,
+        generation_steps_completed: 4
+      });
+    }
 
     // Make the API call to OpenAI DALL-E 3 API
     const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -521,13 +744,41 @@ async function generateImageWithDallE(ingredients: string[], dishType?: string):
     // Check if the response contains an image URL
     if (data && data.data && data.data.length > 0 && data.data[0].url) {
       console.log("Generated image with DALL-E 3:", data.data[0].url);
+      
+      // Update metadata with successful image generation
+      if (metadataId) {
+        await updateRecipeGenerationMetadata(metadataId, {
+          image_generation_success: true,
+          generation_steps_completed: 5
+        });
+      }
+      
       return data.data[0].url;
     } else {
       console.error("DALL-E API response did not contain an image URL:", data);
+      
+      // Update metadata with failed image generation
+      if (metadataId) {
+        await updateRecipeGenerationMetadata(metadataId, {
+          image_generation_success: false,
+          generation_steps_completed: 5
+        });
+      }
+      
       return null;
     }
   } catch (error) {
     console.error("Error calling DALL-E API:", error);
+    
+    // Update metadata with failed image generation
+    if (metadataId) {
+      await updateRecipeGenerationMetadata(metadataId, {
+        image_generation_success: false,
+        generation_steps_completed: 5,
+        error_message: error instanceof Error ? error.message : String(error)
+      });
+    }
+    
     return null;
   }
 }
@@ -537,9 +788,10 @@ async function generateImageWithDallE(ingredients: string[], dishType?: string):
 /**
  * Create a fallback recipe in case the API call fails
  * @param ingredients - Comma-separated list of ingredients
+ * @param onProgress - Optional callback to report progress
  * @returns A basic Recipe object
  */
-async function createFallbackRecipe(ingredients: string): Promise<Recipe> {
+async function createFallbackRecipe(ingredients: string, onProgress?: ProgressCallback): Promise<Recipe> {
   console.log("Creating fallback recipe for ingredients:", ingredients);
 
   const ingredientList = ingredients.split(',').map(item => item.trim());

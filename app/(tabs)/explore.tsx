@@ -8,16 +8,17 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { generateRecipeWithLLM, Recipe } from '@/services/llmService';
+import { generateRecipeWithLLM, Recipe, RecipeGenerationStep, ProgressCallback } from '@/services/llmService';
 import { addFavoriteRecipe, removeFavoriteRecipe, isRecipeFavorite } from '@/services/favoritesServiceSupabase';
 import { addRecentRecipe, getRecentRecipes } from '@/services/recentRecipesServiceSupabase';
 import { saveRecipe } from '@/services/recipeService';
 import RecipeModal from '@/components/RecipeModal';
+import RecipeGenerationLoader from '@/components/RecipeGenerationLoader';
 
 // Function to generate a recipe based on ingredients using an LLM API
-const generateRecipe = async (ingredients: string): Promise<Recipe> => {
+const generateRecipe = async (ingredients: string, onProgress?: ProgressCallback): Promise<{recipe: Recipe, metadataId: string | null}> => {
   // Call the LLM service to generate a recipe
-  return await generateRecipeWithLLM(ingredients);
+  return await generateRecipeWithLLM(ingredients, onProgress);
 };
 
 export default function RecipeScreen() {
@@ -29,8 +30,34 @@ export default function RecipeScreen() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedRecipeIsFavorite, setSelectedRecipeIsFavorite] = useState(false);
+  
+  // Progress tracking state
+  const [currentStep, setCurrentStep] = useState(0);
+  const [generationSteps, setGenerationSteps] = useState<RecipeGenerationStep[]>([
+    { id: 1, title: "Calling LLM", description: "Preparing to send request to AI model", completed: false },
+    { id: 2, title: "Received LLM Response", description: "Processing AI response", completed: false },
+    { id: 3, title: "Parsing LLM Response", description: "Extracting recipe information", completed: false },
+    { id: 4, title: "Generating image with DALL-E 3 API", description: "Creating recipe image", completed: false },
+    { id: 5, title: "Generated image with DALL-E 3", description: "Image generation complete", completed: false },
+    { id: 6, title: "Recipe Successfully Generated", description: "Recipe creation complete", completed: false }
+  ]);
+  
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+
+  // Progress callback function
+  const handleProgress: ProgressCallback = (step: number, stepData: RecipeGenerationStep) => {
+    setCurrentStep(step);
+    setGenerationSteps(prevSteps => 
+      prevSteps.map((prevStep, index) => 
+        index === step 
+          ? { ...stepData }
+          : index < step 
+            ? { ...prevStep, completed: true }
+            : prevStep
+      )
+    );
+  };
 
   // Function to fetch recent recipes
   const fetchRecentRecipes = async () => {
@@ -105,14 +132,29 @@ export default function RecipeScreen() {
       if (ingredients) {
         try {
           setLoading(true);
-          // Call the generateRecipe function which now uses the LLM API
-          const recipeData = await generateRecipe(ingredients);
+          // Reset progress state
+          setCurrentStep(0);
+          setGenerationSteps(prevSteps => 
+            prevSteps.map(step => ({ ...step, completed: false }))
+          );
+          
+          // Call the generateRecipe function which now uses the LLM API with progress callback
+          const { recipe: recipeData, metadataId } = await generateRecipe(ingredients, handleProgress);
 
           // Save the recipe to the database
           const savedRecipe = await saveRecipe(recipeData);
 
           // If the recipe was saved successfully, use the saved recipe (which includes the ID)
           const recipeToUse = savedRecipe || recipeData;
+
+          // Link the metadata with the saved recipe ID if both exist
+          if (metadataId && savedRecipe?.id) {
+            const { updateRecipeGenerationMetadata } = await import('@/services/recipeMetadataService');
+            await updateRecipeGenerationMetadata(metadataId, {
+              recipe_id: savedRecipe.id
+            });
+            console.log('Linked metadata record', metadataId, 'with recipe', savedRecipe.id);
+          }
 
           // Update the recipe state with the saved version (including ID)
           setRecipe(recipeToUse);
@@ -226,10 +268,10 @@ export default function RecipeScreen() {
           </View>
         }>
         {loading ? (
-          <ThemedView style={styles.loadingContainer}>
-            <IconSymbol size={50} name="hourglass" color={colors.accent2} />
-            <ThemedText style={[styles.loadingText, { color: colors.accent2 }]}>Creating your recipe...</ThemedText>
-          </ThemedView>
+          <RecipeGenerationLoader 
+            currentStep={currentStep}
+            steps={generationSteps}
+          />
         ) : (
           <>
             {recipe ? (
