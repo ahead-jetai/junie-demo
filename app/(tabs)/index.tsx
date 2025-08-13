@@ -45,7 +45,7 @@ export default function HomeScreen() {
 
       <ThemedView style={styles.welcomeContainer}>
         <ThemedText style={[styles.welcomeText, { color: colors.text }]}>
-          Welcome to ChefAI! {'\n'} Enter ingredients from your kitchen, and we'll create a delicious recipe for you.
+          Welcome to ChefAI! {'\n'} Enter ingredients from your kitchen, and our AI Powered Chef will create a delicious recipe for you.
         </ThemedText>
       </ThemedView>
 

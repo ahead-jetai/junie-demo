@@ -1,6 +1,7 @@
 import { StyleSheet, Image, TouchableOpacity, View, FlatList } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { Swipeable } from 'react-native-gesture-handler';
 
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
@@ -10,7 +11,7 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { generateRecipeWithLLM, Recipe, RecipeGenerationStep, ProgressCallback } from '@/services/llmService';
 import { addFavoriteRecipe, removeFavoriteRecipe, isRecipeFavorite } from '@/services/favoritesServiceSupabase';
-import { addRecentRecipe, getRecentRecipes } from '@/services/recentRecipesServiceSupabase';
+import { addRecentRecipe, getRecentRecipes, removeRecentRecipe } from '@/services/recentRecipesServiceSupabase';
 import { saveRecipe } from '@/services/recipeService';
 import RecipeModal from '@/components/RecipeModal';
 import RecipeGenerationLoader from '@/components/RecipeGenerationLoader';
@@ -67,6 +68,42 @@ export default function RecipeScreen() {
     } catch (error) {
       console.error('Error fetching recent recipes:', error);
     }
+  };
+
+  // Function to handle removing a recent recipe
+  const handleRemoveRecentRecipe = async (recipe: Recipe) => {
+    try {
+      // Use recipe ID if available, otherwise use title
+      const recipeId = (recipe as any).id;
+      const success = recipeId 
+        ? await removeRecentRecipe(recipeId)
+        : await removeRecentRecipe(recipe.title);
+
+      if (success) {
+        // Update the local state to remove the recipe from the list
+        setRecentRecipes(prevRecipes => 
+          prevRecipes.filter(r => 
+            // Filter by ID if both have IDs, otherwise fall back to title
+            (r as any).id && recipeId ? (r as any).id !== recipeId : r.title !== recipe.title
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error removing recent recipe:', error);
+    }
+  };
+
+  // Function to render the right action (delete button) for swipe
+  const renderRightAction = (recipe: Recipe) => {
+    return (
+      <TouchableOpacity
+        style={[styles.deleteAction, { backgroundColor: colors.accent1 }]}
+        onPress={() => handleRemoveRecentRecipe(recipe)}
+      >
+        <IconSymbol size={24} name="trash" color="white" />
+        <ThemedText style={styles.deleteActionText}>Remove</ThemedText>
+      </TouchableOpacity>
+    );
   };
 
   // Function to handle opening a recipe in a modal
@@ -371,26 +408,30 @@ export default function RecipeScreen() {
                   data={recentRecipes}
                   keyExtractor={(item) => item.id ? `id-${item.id}` : `title-${item.title}-${item.prepTime}`}
                   renderItem={({ item }) => (
-                    <TouchableOpacity 
-                      style={[styles.recentRecipeItem, { backgroundColor: colorScheme === 'dark' ? '#000000' : '#1A1A1A' }]}
-                      onPress={() => openRecipeModal(item)}
+                    <Swipeable
+                      renderRightActions={() => renderRightAction(item)}
                     >
-                      <Image source={{ uri: item.image }} style={styles.recentRecipeImage} />
-                      <View style={styles.recentRecipeContent}>
-                        <ThemedText style={styles.recentRecipeTitle}>{item.title}</ThemedText>
-                        <ThemedText style={styles.recentRecipeDescription} numberOfLines={1}>{item.description}</ThemedText>
-                        <View style={styles.recentRecipeTimes}>
-                          <View style={styles.timeItem}>
-                            <IconSymbol size={12} name="clock" color={colors.accent2} />
-                            <ThemedText style={{ fontSize: 10 }}>Prep: {item.prepTime}</ThemedText>
-                          </View>
-                          <View style={styles.timeItem}>
-                            <IconSymbol size={12} name="flame" color={colors.accent2} />
-                            <ThemedText style={{ fontSize: 10 }}>Cook: {item.cookTime}</ThemedText>
+                      <TouchableOpacity 
+                        style={[styles.recentRecipeItem, { backgroundColor: colorScheme === 'dark' ? '#000000' : '#1A1A1A' }]}
+                        onPress={() => openRecipeModal(item)}
+                      >
+                        <Image source={{ uri: item.image }} style={styles.recentRecipeImage} />
+                        <View style={styles.recentRecipeContent}>
+                          <ThemedText style={styles.recentRecipeTitle}>{item.title}</ThemedText>
+                          <ThemedText style={styles.recentRecipeDescription} numberOfLines={1}>{item.description}</ThemedText>
+                          <View style={styles.recentRecipeTimes}>
+                            <View style={styles.timeItem}>
+                              <IconSymbol size={12} name="clock" color={colors.accent2} />
+                              <ThemedText style={{ fontSize: 10 }}>Prep: {item.prepTime}</ThemedText>
+                            </View>
+                            <View style={styles.timeItem}>
+                              <IconSymbol size={12} name="flame" color={colors.accent2} />
+                              <ThemedText style={{ fontSize: 10 }}>Cook: {item.cookTime}</ThemedText>
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                    </Swipeable>
                   )}
                   scrollEnabled={false}
                   style={styles.recentRecipesList}
@@ -612,6 +653,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(230, 57, 70, 0.5)', // chefRed with opacity
     backgroundColor: '#000000',
+  },
+  // Swipe delete action styles
+  deleteAction: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  deleteActionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 4,
   },
   // Modal styles have been moved to RecipeModal.tsx
 });
