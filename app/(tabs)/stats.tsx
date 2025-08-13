@@ -1,5 +1,6 @@
 import { StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, ScrollView } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -71,7 +72,7 @@ const getIngredientEmoji = (ingredient: string): string => {
   
   // Nuts & Seeds
   if (lowerIngredient.includes('nut') || lowerIngredient.includes('almond') || lowerIngredient.includes('walnut')) return '🥜';
-  
+
   // Default fallback
   return '🥕';
 };
@@ -84,9 +85,11 @@ export default function StatsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
-  useEffect(() => {
-    loadMetrics();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMetrics();
+    }, [])
+  );
 
   const loadMetrics = async () => {
     try {
@@ -218,7 +221,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   header: {
     paddingVertical: 16,
-    marginTop: 40,
+    marginTop: 20,
     marginBottom: 16,
     alignItems: 'center',
     borderBottomWidth: 1,
@@ -335,7 +338,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FF8C00',
-    marginBottom: 10
+    marginBottom: 20
   },
   buttonText: {
     color: '#fff',

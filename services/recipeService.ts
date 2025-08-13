@@ -1,5 +1,6 @@
 import { supabase, getCurrentUser } from './supabaseService';
 import { Recipe } from './llmService';
+import { persistDallEImage, isDallETemporaryUrl } from './imageStorageService';
 
 /**
  * Save a recipe to the database
@@ -15,17 +16,33 @@ export async function saveRecipe(recipe: Recipe): Promise<Recipe | null> {
       return null;
     }
 
+    // Handle DALL-E image persistence before saving
+    let finalImageUrl = recipe.image;
+    let isDallEImage = recipe.isDallEImage || false;
+
+    if (recipe.image && isDallETemporaryUrl(recipe.image)) {
+      console.log('[RecipeService] Detected DALL-E temporary URL, persisting to Supabase Storage...');
+      try {
+        finalImageUrl = await persistDallEImage(recipe.image);
+        isDallEImage = false; // Mark as no longer a temporary DALL-E image
+        console.log('[RecipeService] Successfully persisted DALL-E image:', finalImageUrl);
+      } catch (error) {
+        console.error('[RecipeService] Failed to persist DALL-E image, using original URL:', error);
+        // Keep original URL and DALL-E flag as fallback
+      }
+    }
+
     // Convert recipe to database format
     const recipeData = {
       user_id: user.id,
       title: recipe.title,
       description: recipe.description,
-      image: recipe.image,
+      image: finalImageUrl,
       prep_time: recipe.prepTime,
       cook_time: recipe.cookTime,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
-      is_dalle_image: recipe.isDallEImage || false,
+      is_dalle_image: isDallEImage,
       created_at: new Date().toISOString(),
     };
 
