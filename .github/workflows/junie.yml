@@ -1,4 +1,4 @@
-name: Junie
+name: Official Junie GitHub Action (BETA)
 run-name: Junie run ${{ inputs.run_id }}
 
 permissions:
@@ -16,6 +16,6 @@ on:
 
 jobs:
   call-workflow-passing-data:
-    uses: jetbrains-junie/junie-workflows/.github/workflows/ej-issue.yml@main
+    uses: JetBrains/junie-github-action@v0.3.0
     with:
       workflow_params: ${{ inputs.workflow_params }}
