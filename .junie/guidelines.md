@@ -81,6 +81,9 @@ UNSPLASH_ACCESS_KEY=your-unsplash-access-key
 UNSPLASH_SECRET_KEY=your-unsplash-secret-key
 UNSPLASH_APP_ID=your-unsplash-app-id
 DEEP_AI_API_KEY=your-deep-ai-api-key
+SUPABASE_URL=your-supabase-project-url
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
 ## Best Practices
